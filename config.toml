@@ -1,0 +1,15 @@
+baseURL = "/"
+languageCode = "en-us"
+title = "JLINC DID Method Specification"
+theme = "hugo-xmin"
+ignoreFiles = ["\\.Rmd$", "\\.Rmarkdown$", "_files$", "_cache$"]
+enableRobotsTXT = "true"
+indexes = []
+
+# [[menu.main]]
+#     name = "DID Method Specification"
+#     url = "/"
+#     weight = 1
+
+[params]
+    footer = "&copy; [Portable Data Corporation](https://jlinc.com/) 2018"
