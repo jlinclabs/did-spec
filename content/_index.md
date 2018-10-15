@@ -11,9 +11,7 @@ type: single
 
 JLINC is a protocol for sharing data protected by an agreement on the terms under which the data is being shared.
 
-The agreement is known as an Information Sharing Agreement, and can be a reference to a standardized agreement (a Standard Information Sharing Agreement or SISA) or a one-off specialized contract.
-
-The base profile is HTTP-based, but any protocol that affords methods for initiating and responding to data transactions, along with metadata (headers) accompanying those interactions could be adapted.
+This document specifies methods for creating and editing Digital IDs (DIDs) suitable for use with the [JLINC protocol](https://protocol.jlinc.org/). It conforms to the requirements specified in the [DID specification](https://w3c-ccg.github.io/did-spec/) currently published by the W3C Credentials Community Group.
 
 ### _Copyright Notice_
 
