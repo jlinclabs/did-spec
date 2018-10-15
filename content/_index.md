@@ -26,7 +26,12 @@ The base profile is HTTP-based, but any protocol that affords methods for initia
 3. [Overview](#3-overview)
 4. [Method Name](#4-method-name)
 5. [Format](#5-format)
-6. [Operations](#6-operations)
+6. [Operations](#6-operations)  
+6.1. [Register](#6-1-register-create)  
+6.2. [Resolve](#6-2-resolve-read)  
+6.3. [Supersede](#6-3-supersede-update)  
+6.4. [Revoke](#6-4-revoke-delete)  
+6.5. [History](#6-5-history)
 
 
 ### _1. Notation and Conventions_
@@ -91,7 +96,7 @@ __The `did` value MUST be the actual DID document__ that the registrant wishes t
 * a DID subject with the value `did:jlinc:` followed by an ed25519 detached signing public key in Base64 format
 * a `created` timestamp - the system will check the timestamp to be sure it is within reasonable bounds of the current time, allowing for network delays and small server time variations.
 
-__The `secret` is a random 32 byte value__, encoded with the system master public key. This secret must be kept confidential and safe by the registrant, as it is required to perform any further operations on this DID.
+__The `secret` is a random 32 byte value__, encoded with the system master public key. This secret must be kept confidential and safe by the registrant, as it is required to perform any further operations on this DID, including revoking or superseding it.
 
 __The `signature` is generated__ by first concatenating the encoded secret string, a dot (`.`), and the created timestamp from the DID. A SHA256 value is then generated from the concatenated string, and signed using the private key that can be validated by the public key encoded in the DID subject (`0fil1CNmwie8TevnTJckrvqsk9nyvo8U_3YRLeagAhI` in the example above). Finally the signature is Base64 encoded.
 
@@ -126,12 +131,74 @@ This JWT must then be POSTed to the `/confirm` endpoint.
 
 If the JWT verifies and the signature contained within also verifies, an HTTP status 201 is returned with a body containing a JSON document with just the `id` value of the newly activated DID.
 
-
-
-
-
 #### 6.2 Resolve (read)
+
+GET `/{DID}`
+
+DID MUST be the full did including the `did:jlinc:"` prefix. Otherwise an HTTP status 400 will be returned with a JSON body of `{"error":"cannot parse request"}`.
+
+If the requested DID does not exist, an HTTP status 404 will be returned  
+with a JSON body of `{"status":"not found"}`.
+
+If the requested DID has been revoked an HTTP status 410 will be returned  
+with a JSON body of `{"status":"revoked"}`.
+
+If the requested DID has been superseded an HTTP status 303 will be returned, with a Location header giving the current resolve address for the entity in question. If there exists a chain of superseded DIDs only the location of most current one will be returned.  
+The JSON body will contain `{"supersededBy": *new URL* }`.
+
+If the request can be successfully fulfilled an HTTP status 200 and a Content-Type of "ld+json" will be returned, and the body will consist of the complete DID record.
 
 #### 6.3 Supersede (update)
 
+JLINC DIDs cannot be edited, only replaced. If the client wishes to replace an existing DID, either because the private key has been compromised or because the client wishes to edit the DID information, a new DID request MUST be created and POSTed to the `/supersede` endpoint.
+
+The procedure is exactly the same as `register` with the exception that instead of `secret` the request MUST contain a key called `supersedes` with the superseded DID as its value.
+
+The client MUST then confirm the request using the same secret for the JWT HMAC as was used to create the DID being superseded.
+
 #### 6.4 Revoke (delete)
+
+If a client wishes to revoke a DID rather than just superseding it, making it invalid for any further use, it MUST create a JWT with the payload consisting of a JSON document with the key of `revoke` and value of the complete DID being revoked. Example:
+
+```json
+{"revoke":"did:jlinc:0fil1CNmwie8TevnTJckrvqsk9nyvo8U_3YRLeagAhI"}
+```
+
+The JWT MUST be HMAC'd with the secret that was used to register the DID in question, and POSTed to the `revoke` endpoint.
+
+If there is a failure an HTTP status of 400 will be returned along with a JSON body containing the error description(s) under an `error` key.
+
+Otherwise an HTTP status of 200 will be returned with a JSON body containing the revoked DID under a `revoked` key.
+
+This action is permanent and cannot be undone.
+
+#### 6.5 History
+
+GET `/history/{DID}`
+
+As with `resolve`, the DID MUST be the full did including the `did:jlinc:"` prefix.
+
+Querying the history of a DID, if the DID is resolvable, returns a JSON object containing an array of related DIDs, each being a supersession of the previous one in the chain. The last DID in the chain MUST either be the currently valid one, or a final revoked version.
+
+Example:
+
+```json
+{
+  "history": [
+    {
+      "did": {...},
+      "superseded": "2018-10-23T17:00:00Z"
+    },
+    {
+      "did": {...},
+      "superseded": "2018-12-25T17:00:00Z"
+    },
+    {
+      "did": {...},
+      "valid": true
+    }
+  ]
+}
+```
+
+Querying history on _any_ DID in chain will return the whole chain.
